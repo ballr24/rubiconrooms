@@ -1,7 +1,12 @@
 #!/bin/bash
 
-# Prompt for the domain name (without www or https)
-read -p "Enter the domain name (without www or https): " DOMAIN_NAME
+# Try to get the domain name from the SSL certificate
+DOMAIN_NAME=$(openssl x509 -in /etc/letsencrypt/live/*/cert.pem -noout -subject | sed -n 's/^.*CN=\(.*\)/\1/p')
+
+# If no domain is found from the SSL certificate, fallback to the hostname
+if [ -z "$DOMAIN_NAME" ]; then
+  DOMAIN_NAME=$(hostname --fqdn)
+fi
 
 # Hardcoded path to the configuration file in the "wordpress" directory
 VHOST_CONFIG_PATH="/usr/local/lsws/conf/vhosts/wordpress/vhconf.conf"
@@ -95,4 +100,4 @@ else
 fi
 
 # Display log file location
-echo "V2 All logs have been saved to $LOG_FILE"
+echo "V3 All logs have been saved to $LOG_FILE"
