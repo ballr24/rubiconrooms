@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Try to get the domain name from the SSL certificate
-DOMAIN_NAME=$(openssl x509 -in /etc/letsencrypt/live/*/cert.pem -noout -subject | sed -n 's/^.*CN=\(.*\)/\1/p')
+DOMAIN_NAME=$(openssl x509 -in /etc/letsencrypt/live/*/cert.pem -noout -subject | sed -n 's/^.*CN=\(.*\)/\1/p' | head -n 1)
 
 # If no domain is found from the SSL certificate, fallback to the hostname
 if [ -z "$DOMAIN_NAME" ]; then
@@ -56,7 +56,7 @@ context /phpmyadmin/ {
 context / {
   location                \$DOC_ROOT/
   allowBrowse             1
-  note                    <<<END_note
+  extraHeaders            <<<END_extraHeaders
 Strict-Transport-Security: max-age=31536000; includeSubDomains
 Content-Security-Policy "upgrade-insecure-requests;connect-src *"
 Referrer-Policy strict-origin-when-cross-origin
@@ -64,7 +64,7 @@ X-Frame-Options: SAMEORIGIN
 X-Content-Type-Options: nosniff
 X-XSS-Protection 1;mode=block
 Permissions-Policy: geolocation=(self "")
-  END_note
+  END_extraHeaders
 
   rewrite  {
 
@@ -100,4 +100,4 @@ else
 fi
 
 # Display log file location
-echo "V3 All logs have been saved to $LOG_FILE"
+echo "All logs have been saved to $LOG_FILE"
