@@ -102,7 +102,7 @@ main_setup() {
         echo "Creating FTP user..."
         sudo adduser --disabled-password --gecos "" $ftp_user
         echo "$ftp_user:$ftp_password" | sudo chpasswd
-        echo "User $ftp_user created."
+        echo "User $ftp_user created with a random password."
     else
         echo "User $ftp_user already exists. Skipping user creation."
     fi
@@ -152,7 +152,7 @@ main_setup() {
         git clone https://github.com/ballr24/rubiconrooms.git
     fi
 
-    # 12. Capture server details without logging sensitive info
+    # 12. Capture server details
     ftp_server=$(hostname -I | awk '{print $1}')
     ftp_port="22"
     subject="SFTP Server Details for $domain_name"
@@ -182,12 +182,12 @@ EOM
         cat "$log_file"
     } | mail -s "$subject" $email_address
 
-    # 14. Display server details in the terminal, mask sensitive info in the log
+    # 14. Display server details in the terminal
     echo "-------------------------------------"
     echo "SFTP setup completed!"
     echo "Server: $ftp_server"
-    echo "Username: [REDACTED IN LOG]"
-    echo "Password: [REDACTED IN LOG]"
+    echo "Username: $ftp_user"
+    echo "Password: $ftp_password"
     echo "Port: $ftp_port (SFTP)"
     echo "Details and log sent to $email_address"
     echo "-------------------------------------"
