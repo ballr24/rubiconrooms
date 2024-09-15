@@ -26,13 +26,13 @@ if ! grep -q "context / {" "$VHOST_CONFIG_PATH"; then
   log_message "The `/` context did not exist, so it was created."
 fi
 
-# Insert security headers using the `note` block in the `/` context
+# Insert security headers using the `note` block in the correct order in the `/` context
 if ! grep -q "note                    <<<END_note" "$VHOST_CONFIG_PATH"; then
-  # Find the context for `/` and add the `note` block with security headers
-  sed -i '/context \/ {/a \  note                    <<<END_note\nStrict-Transport-Security: max-age=31536000; includeSubDomains\nContent-Security-Policy \"upgrade-insecure-requests;connect-src *\"\nReferrer-Policy strict-origin-when-cross-origin\nX-Frame-Options: SAMEORIGIN\nX-Content-Type-Options: nosniff\nX-XSS-Protection 1;mode=block\nPermissions-Policy: geolocation=(self \"\")\n  END_note' "$VHOST_CONFIG_PATH"
+  # Ensure the `note` block is added after `location` and `allowBrowse`
+  sed -i '/location \$DOC_ROOT\//a \  note                    <<<END_note\nStrict-Transport-Security: max-age=31536000; includeSubDomains\nContent-Security-Policy \"upgrade-insecure-requests;connect-src *\"\nReferrer-Policy strict-origin-when-cross-origin\nX-Frame-Options: SAMEORIGIN\nX-Content-Type-Options: nosniff\nX-XSS-Protection 1;mode=block\nPermissions-Policy: geolocation=(self \"\")\n  END_note' "$VHOST_CONFIG_PATH"
   
   if [ $? -eq 0 ]; then
-    log_message "Security headers added successfully using the `note` block to the / context in $VHOST_CONFIG_PATH."
+    log_message "Security headers added successfully using the `note` block after location in the / context in $VHOST_CONFIG_PATH."
   else
     log_message "Failed to add security headers using the `note` block to $VHOST_CONFIG_PATH."
     exit 1
