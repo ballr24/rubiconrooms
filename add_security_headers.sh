@@ -20,31 +20,25 @@ else
   exit 1
 fi
 
-# Ensure the `/` context exists or create it
+# Check if the `/` context exists and add it if not
 if ! grep -q "context / {" "$VHOST_CONFIG_PATH"; then
   echo -e "\ncontext / {\n  location \$DOC_ROOT/\n  allowBrowse 1\n}\n" >> "$VHOST_CONFIG_PATH"
   log_message "The `/` context did not exist, so it was created."
 fi
 
-# Check if there's a 'note' entry where 'extraHeaders' should be and remove it
-if grep -q "note" "$VHOST_CONFIG_PATH"; then
-  sed -i '/note                    <<<END_note/,/END_note/d' "$VHOST_CONFIG_PATH"
-  log_message "'note' block found and removed from $VHOST_CONFIG_PATH."
-fi
-
-# Insert security headers in the correct `/` context
-if ! grep -q "extraHeaders" "$VHOST_CONFIG_PATH"; then
-  # Find the context for `/` and add extraHeaders below it
-  sed -i '/context \/ {/a \  extraHeaders            <<<END_extraHeaders\nStrict-Transport-Security: max-age=31536000; includeSubDomains\nContent-Security-Policy \"upgrade-insecure-requests;connect-src *\"\nReferrer-Policy strict-origin-when-cross-origin\nX-Frame-Options: SAMEORIGIN\nX-Content-Type-Options: nosniff\nX-XSS-Protection 1;mode=block\nPermissions-Policy: geolocation=(self \"\")\n  END_extraHeaders' "$VHOST_CONFIG_PATH"
+# Insert security headers using the `note` block in the `/` context
+if ! grep -q "note                    <<<END_note" "$VHOST_CONFIG_PATH"; then
+  # Find the context for `/` and add the `note` block with security headers
+  sed -i '/context \/ {/a \  note                    <<<END_note\nStrict-Transport-Security: max-age=31536000; includeSubDomains\nContent-Security-Policy \"upgrade-insecure-requests;connect-src *\"\nReferrer-Policy strict-origin-when-cross-origin\nX-Frame-Options: SAMEORIGIN\nX-Content-Type-Options: nosniff\nX-XSS-Protection 1;mode=block\nPermissions-Policy: geolocation=(self \"\")\n  END_note' "$VHOST_CONFIG_PATH"
   
   if [ $? -eq 0 ]; then
-    log_message "Security headers added successfully to the / context in $VHOST_CONFIG_PATH."
+    log_message "Security headers added successfully using the `note` block to the / context in $VHOST_CONFIG_PATH."
   else
-    log_message "Failed to add security headers to $VHOST_CONFIG_PATH."
+    log_message "Failed to add security headers using the `note` block to $VHOST_CONFIG_PATH."
     exit 1
   fi
 else
-  log_message "Security headers already exist in $VHOST_CONFIG_PATH. No changes made."
+  log_message "Security headers (note block) already exist in $VHOST_CONFIG_PATH. No changes made."
 fi
 
 # Graceful restart of OpenLiteSpeed
