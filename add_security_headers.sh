@@ -20,11 +20,13 @@ else
   exit 1
 fi
 
-# Insert security headers in the desired format if they are not already present
+# Insert security headers in the desired format in the `/` context
 if ! grep -q "extraHeaders" "$VHOST_CONFIG_PATH"; then
-  sed -i '/context \//a \  extraHeaders            <<<END_extraHeaders\nStrict-Transport-Security: max-age=31536000; includeSubDomains\nContent-Security-Policy \"upgrade-insecure-requests;connect-src *\"\nReferrer-Policy strict-origin-when-cross-origin\nX-Frame-Options: SAMEORIGIN\nX-Content-Type-Options: nosniff\nX-XSS-Protection 1;mode=block\nPermissions-Policy: geolocation=(self \"\")\n  END_extraHeaders' "$VHOST_CONFIG_PATH"
+  # Find the context for `/` and add extraHeaders below it
+  sed -i '/context \/ {/a \  extraHeaders            <<<END_extraHeaders\nStrict-Transport-Security: max-age=31536000; includeSubDomains\nContent-Security-Policy \"upgrade-insecure-requests;connect-src *\"\nReferrer-Policy strict-origin-when-cross-origin\nX-Frame-Options: SAMEORIGIN\nX-Content-Type-Options: nosniff\nX-XSS-Protection 1;mode=block\nPermissions-Policy: geolocation=(self \"\")\n  END_extraHeaders' "$VHOST_CONFIG_PATH"
+  
   if [ $? -eq 0 ]; then
-    log_message "Security headers added successfully to $VHOST_CONFIG_PATH."
+    log_message "Security headers added successfully to the / context in $VHOST_CONFIG_PATH."
   else
     log_message "Failed to add security headers to $VHOST_CONFIG_PATH."
     exit 1
