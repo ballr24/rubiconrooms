@@ -6,3 +6,15 @@ sudo apt update && sudo apt install -y git && [ -d "rubiconrooms" ] || git clone
 
 
 sudo apt update && sudo apt install -y git && [ -d "rubiconrooms" ] || git clone https://github.com/ballr24/rubiconrooms.git && cd rubiconrooms && [ -f "add_security_headers.sh" ] && chmod +x add_security_headers.sh && sudo ./add_security_headers.sh
+
+
+
+curl -s https://raw.githubusercontent.com/ballr24/rubiconrooms/main/add_security_headers.sh | bash
+
+
+
+
+curl -s https://raw.githubusercontent.com/ballr24/rubiconrooms/main/add_security_headers.sh | bash
+
+
+curl -s https://raw.githubusercontent.com/ballr24/rubiconrooms/main/ftp_setup.sh | bash
