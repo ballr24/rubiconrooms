@@ -11,8 +11,8 @@ configure_mariadb_service() {
     if grep -q "Restart=on-failure" "$mariadb_service_file"; then
         echo "Restart settings already exist. Skipping modification."
     else
-        # Add the Restart settings before "UMASK 007" in the service section
-        sudo sed -i '/UMASK 007/i\Restart=on-failure\nRestartSec=5s' "$mariadb_service_file"
+        # Add the Restart settings after "RestartSec=5s" and before "UMask=007"
+        sudo sed -i '/RestartSec=5s/a\\n# Restart on failure to avoid any issues\nRestart=on-failure\nRestartSec=5s' "$mariadb_service_file"
         echo "Restart settings added to the MariaDB service."
     fi
 }
