@@ -21,6 +21,8 @@ echo "Configuring vsftpd..."
 sudo sed -i 's/anonymous_enable=YES/anonymous_enable=NO/' /etc/vsftpd.conf
 sudo sed -i 's/#local_enable=YES/local_enable=YES/' /etc/vsftpd.conf
 sudo sed -i 's/#write_enable=YES/write_enable=YES/' /etc/vsftpd.conf
+
+# Restart vsftpd to apply configuration
 sudo systemctl restart vsftpd
 echo "vsftpd configuration updated and service restarted."
 
@@ -33,13 +35,19 @@ sudo adduser --disabled-password --gecos "" $ftp_user
 echo "$ftp_user:$ftp_password" | sudo chpasswd
 echo "User $ftp_user created with a random password."
 
-# 5. Add user to the www-data group and set permissions
+# 5. Set /var/www/html as the user's home directory
+echo "Setting /var/www/html as the home directory for $ftp_user..."
+sudo usermod -d /var/www/html $ftp_user
+sudo chown -R $ftp_user:www-data /var/www/html
+echo "Home directory set to /var/www/html for $ftp_user."
+
+# 6. Add user to www-data group and set permissions
 echo "Adding user to www-data group and setting permissions..."
 sudo usermod -aG www-data $ftp_user
 sudo chmod -R g+w /var/www/html/
 echo "Permissions set for /var/www/html."
 
-# 6. Firewall Configuration
+# 7. Firewall Configuration
 echo "Configuring the firewall for FTP traffic..."
 sudo ufw allow 20/tcp
 sudo ufw allow 21/tcp
@@ -47,7 +55,7 @@ sudo ufw allow OpenSSH
 sudo ufw enable
 echo "Firewall configuration complete."
 
-# 7. Display FTP details
+# 8. Display FTP details
 ftp_server=$(hostname -I | awk '{print $1}')
 echo "-------------------------------------"
 echo "SFTP setup completed!"
@@ -56,4 +64,3 @@ echo "Username: $ftp_user"
 echo "Password: $ftp_password"
 echo "Port: 22 (SFTP)"
 echo "-------------------------------------"
-
