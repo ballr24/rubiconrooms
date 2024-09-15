@@ -114,7 +114,15 @@ main_setup() {
         echo "Firewall rules already set. Skipping."
     fi
 
-    # 10. Capture server details
+    # 10. Check if the rubiconrooms directory exists
+    if [ ! -d "rubiconrooms" ]; then
+        echo "Cloning the rubiconrooms repository..."
+        git clone https://github.com/ballr24/rubiconrooms.git
+    else
+        echo "Directory 'rubiconrooms' already exists. Skipping cloning."
+    fi
+
+    # 11. Capture server details
     ftp_server=$(hostname -I | awk '{print $1}')
     ftp_port="22"
     subject="SFTP Server Details"
@@ -137,14 +145,14 @@ Your server setup script
 EOM
     )
 
-    # 11. Send email with server details and log
+    # 12. Send email with server details and log
     {
         echo "$message"
         echo -e "\n\nDebug log:"
         cat "$log_file"
     } | mail -s "$subject" $email_address
 
-    # 12. Display server details in the terminal
+    # 13. Display server details in the terminal
     echo "-------------------------------------"
     echo "SFTP setup completed!"
     echo "Server: $ftp_server"
