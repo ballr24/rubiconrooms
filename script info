@@ -1,0 +1,8 @@
+
+
+sudo apt update && sudo apt install -y git && git clone https://github.com/ballr24/rubiconrooms.git && cd rubiconrooms && chmod +x ftp_setup.sh && sudo ./ftp_setup.sh
+
+
+
+
+sudo apt update && sudo apt install -y git && [ -d "rubiconrooms" ] || git clone https://github.com/ballr24/rubiconrooms.git && cd rubiconrooms && [ -f "mariadb_restart_on_failure.sh" ] && chmod +x mariadb_restart_on_failure.sh && sudo ./mariadb_restart_on_failure.sh
