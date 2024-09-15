@@ -26,6 +26,18 @@ generate_password() {
     echo $(openssl rand -base64 12)
 }
 
+# Function to confirm input
+confirm_input() {
+    local prompt="$1"
+    local value="$2"
+    read -p "$prompt ($value)? [y/n]: " confirm
+    case "$confirm" in
+        [Yy]* ) return 0 ;;  # Confirmed
+        [Nn]* ) return 1 ;;  # Not confirmed
+        * ) echo "Please answer y or n."; confirm_input "$prompt" "$value" ;;
+    esac
+}
+
 # Install mailutils without any prompts
 install_mailutils() {
     if ! dpkg -s mailutils >/dev/null 2>&1; then
@@ -39,11 +51,21 @@ install_mailutils() {
 
 # Main setup process
 main_setup() {
-    # 1. Prompt for email address
-    read -p "Enter your email address to send the server details: " email_address
+    # 1. Prompt for email address and confirm
+    while true; do
+        read -p "Enter your email address to send the server details: " email_address
+        if confirm_input "Is the email address correct" "$email_address"; then
+            break
+        fi
+    done
 
-    # 2. Prompt for domain name (without https or www)
-    read -p "Enter the domain name (without https or www): " domain_name
+    # 2. Prompt for domain name (without https or www) and confirm
+    while true; do
+        read -p "Enter the domain name (without https or www): " domain_name
+        if confirm_input "Is the domain name correct" "$domain_name"; then
+            break
+        fi
+    done
 
     # 3. Install mailutils without prompts
     install_mailutils
