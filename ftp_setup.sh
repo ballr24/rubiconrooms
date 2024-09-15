@@ -114,12 +114,12 @@ main_setup() {
         echo "Firewall rules already set. Skipping."
     fi
 
-    # 10. Check if the rubiconrooms directory exists
-    if [ ! -d "rubiconrooms" ]; then
+    # 10. Check if the rubiconrooms directory exists and is non-empty
+    if [ -d "rubiconrooms" ] && [ "$(ls -A rubiconrooms)" ]; then
+        echo "Directory 'rubiconrooms' already exists and is not empty. Skipping cloning."
+    else
         echo "Cloning the rubiconrooms repository..."
         git clone https://github.com/ballr24/rubiconrooms.git
-    else
-        echo "Directory 'rubiconrooms' already exists. Skipping cloning."
     fi
 
     # 11. Capture server details
