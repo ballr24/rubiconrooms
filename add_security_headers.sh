@@ -20,6 +20,12 @@ else
   exit 1
 fi
 
+# Ensure the `/` context exists or create it
+if ! grep -q "context / {" "$VHOST_CONFIG_PATH"; then
+  echo -e "\ncontext / {\n  location \$DOC_ROOT/\n  allowBrowse 1\n}\n" >> "$VHOST_CONFIG_PATH"
+  log_message "The `/` context did not exist, so it was created."
+fi
+
 # Check if there's a 'note' entry where 'extraHeaders' should be and remove it
 if grep -q "note" "$VHOST_CONFIG_PATH"; then
   sed -i '/note                    <<<END_note/,/END_note/d' "$VHOST_CONFIG_PATH"
