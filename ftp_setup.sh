@@ -42,16 +42,19 @@ main_setup() {
     # 1. Prompt for email address
     read -p "Enter your email address to send the server details: " email_address
 
-    # 2. Install mailutils without prompts
+    # 2. Prompt for domain name (without https or www)
+    read -p "Enter the domain name (without https or www): " domain_name
+
+    # 3. Install mailutils without prompts
     install_mailutils
 
-    # 3. Installation of vsftpd
+    # 4. Installation of vsftpd
     echo "Installing vsftpd..."
     sudo apt-get update
     sudo apt-get install -y vsftpd || echo "vsftpd is already installed."
     echo "vsftpd installed successfully."
 
-    # 4. Backup Original Configuration if not already backed up
+    # 5. Backup Original Configuration if not already backed up
     if [ ! -f /etc/vsftpd.conf.orig ]; then
         echo "Backing up the original configuration file..."
         sudo cp /etc/vsftpd.conf /etc/vsftpd.conf.orig
@@ -60,7 +63,7 @@ main_setup() {
         echo "Backup already exists. Skipping."
     fi
 
-    # 5. Configuring vsftpd
+    # 6. Configuring vsftpd
     echo "Configuring vsftpd..."
     sudo sed -i 's/anonymous_enable=YES/anonymous_enable=NO/' /etc/vsftpd.conf
     sudo sed -i 's/#local_enable=YES/local_enable=YES/' /etc/vsftpd.conf
@@ -68,7 +71,7 @@ main_setup() {
     sudo systemctl restart vsftpd
     echo "vsftpd configuration updated and service restarted."
 
-    # 6. Generate random username and password for the FTP user
+    # 7. Generate random username and password for the FTP user
     ftp_user="ftpuser_$(openssl rand -hex 3)"
     ftp_password=$(generate_password)
 
@@ -82,27 +85,27 @@ main_setup() {
         echo "User $ftp_user already exists. Skipping user creation."
     fi
 
-    # 7. Set /var/www/html as the user's home directory if not already set
-    if [[ $(getent passwd "$ftp_user" | cut -d: -f6) != "/var/www/html" ]]; then
-        echo "Setting /var/www/html as the home directory for $ftp_user..."
-        sudo usermod -d /var/www/html $ftp_user
-        sudo chown -R $ftp_user:www-data /var/www/html
-        echo "Home directory set to /var/www/html for $ftp_user."
+    # 8. Set /var/www/html/ as the user's home directory if not already set
+    if [[ $(getent passwd "$ftp_user" | cut -d: -f6) != "/var/www/html/" ]]; then
+        echo "Setting /var/www/html/ as the home directory for $ftp_user..."
+        sudo usermod -d /var/www/html/ $ftp_user
+        sudo chown -R $ftp_user:www-data /var/www/html/
+        echo "Home directory set to /var/www/html/ for $ftp_user."
     else
         echo "Home directory is already set. Skipping."
     fi
 
-    # 8. Add user to www-data group and set permissions if not already set
+    # 9. Add user to www-data group and set permissions if not already set
     if ! groups "$ftp_user" | grep -q www-data; then
         echo "Adding user to www-data group and setting permissions..."
         sudo usermod -aG www-data $ftp_user
-        sudo chmod -R g+w /var/www/html/
-        echo "Permissions set for /var/www/html."
+        sudo chmod -R g+w /var/www/html//
+        echo "Permissions set for /var/www/html/."
     else
         echo "User already in www-data group. Skipping."
     fi
 
-    # 9. Firewall Configuration if not already done
+    # 10. Firewall Configuration if not already done
     if ! sudo ufw status | grep -q '20/tcp'; then
         echo "Configuring the firewall for FTP traffic..."
         sudo ufw allow 20/tcp
@@ -114,9 +117,8 @@ main_setup() {
         echo "Firewall rules already set. Skipping."
     fi
 
-    # 10. Check if the rubiconrooms directory exists and is non-empty
+    # 11. Check if the rubiconrooms directory exists and is non-empty
     if [ -d "rubiconrooms" ]; then
-        # If directory exists, check if it's empty or not
         if [ "$(ls -A rubiconrooms)" ]; then
             echo "Directory 'rubiconrooms' already exists and is not empty. Skipping cloning."
         else
@@ -128,14 +130,14 @@ main_setup() {
         git clone https://github.com/ballr24/rubiconrooms.git
     fi
 
-    # 11. Capture server details
+    # 12. Capture server details
     ftp_server=$(hostname -I | awk '{print $1}')
     ftp_port="22"
-    subject="SFTP Server Details"
+    subject="SFTP Server Details for $domain_name"
     message=$(cat <<- EOM
 Hello,
 
-Your SFTP server has been set up successfully.
+Your SFTP server for $domain_name has been set up successfully.
 
 Here are your login details:
 
@@ -151,14 +153,14 @@ Your server setup script
 EOM
     )
 
-    # 12. Send email with server details and log
+    # 13. Send email with server details and log
     {
         echo "$message"
         echo -e "\n\nDebug log:"
         cat "$log_file"
     } | mail -s "$subject" $email_address
 
-    # 13. Display server details in the terminal
+    # 14. Display server details in the terminal
     echo "-------------------------------------"
     echo "SFTP setup completed!"
     echo "Server: $ftp_server"
