@@ -3,7 +3,7 @@
 # Prompt for the domain name (without www or https)
 read -p "Enter the domain name (without www or https): " DOMAIN_NAME
 
-# Path to the configuration file in the "wordpress" directory
+# Hardcoded path to the configuration file in the "wordpress" directory
 VHOST_CONFIG_PATH="/usr/local/lsws/conf/vhosts/wordpress/vhconf.conf"
 LOG_FILE="/var/log/vhconf_replace.log"
 
