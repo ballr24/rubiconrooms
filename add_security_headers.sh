@@ -3,8 +3,8 @@
 # Prompt for the domain name (without www or https)
 read -p "Enter the domain name (without www or https): " DOMAIN_NAME
 
-# Path to the configuration file
-VHOST_CONFIG_PATH="/usr/local/lsws/conf/vhosts/${DOMAIN_NAME}/vhconf.conf"
+# Path to the configuration file in the "wordpress" directory
+VHOST_CONFIG_PATH="/usr/local/lsws/conf/vhosts/wordpress/vhconf.conf"
 LOG_FILE="/var/log/vhconf_replace.log"
 
 # Logging function
@@ -23,7 +23,7 @@ else
   exit 1
 fi
 
-# Replace the content of vhconf.conf with the new configuration
+# Replace the content of vhconf.conf with the new configuration, using the domain name for SSL paths
 cat > "$VHOST_CONFIG_PATH" <<EOL
 docRoot                   /var/www/html/
 
