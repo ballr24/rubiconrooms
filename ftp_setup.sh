@@ -85,12 +85,12 @@ main_setup() {
         echo "User $ftp_user already exists. Skipping user creation."
     fi
 
-    # 8. Set /var/www/html/ as the user's home directory if not already set
-    if [[ $(getent passwd "$ftp_user" | cut -d: -f6) != "/var/www/html/" ]]; then
-        echo "Setting /var/www/html/ as the home directory for $ftp_user..."
-        sudo usermod -d /var/www/html/ $ftp_user
-        sudo chown -R $ftp_user:www-data /var/www/html/
-        echo "Home directory set to /var/www/html/ for $ftp_user."
+    # 8. Set /var/www/html as the user's home directory if not already set
+    if [[ $(getent passwd "$ftp_user" | cut -d: -f6) != "/var/www/html" ]]; then
+        echo "Setting /var/www/html as the home directory for $ftp_user..."
+        sudo usermod -d /var/www/html $ftp_user
+        sudo chown -R $ftp_user:www-data /var/www/html
+        echo "Home directory set to /var/www/html for $ftp_user."
     else
         echo "Home directory is already set. Skipping."
     fi
@@ -99,8 +99,8 @@ main_setup() {
     if ! groups "$ftp_user" | grep -q www-data; then
         echo "Adding user to www-data group and setting permissions..."
         sudo usermod -aG www-data $ftp_user
-        sudo chmod -R g+w /var/www/html//
-        echo "Permissions set for /var/www/html/."
+        sudo chmod -R g+w /var/www/html/
+        echo "Permissions set for /var/www/html."
     else
         echo "User already in www-data group. Skipping."
     fi
@@ -111,7 +111,7 @@ main_setup() {
         sudo ufw allow 20/tcp
         sudo ufw allow 21/tcp
         sudo ufw allow OpenSSH
-        sudo ufw enable
+        yes | sudo ufw enable   # Automatically answer yes to the prompt
         echo "Firewall configuration complete."
     else
         echo "Firewall rules already set. Skipping."
