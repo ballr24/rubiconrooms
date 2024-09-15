@@ -115,10 +115,16 @@ main_setup() {
     fi
 
     # 10. Check if the rubiconrooms directory exists and is non-empty
-    if [ -d "rubiconrooms" ] && [ "$(ls -A rubiconrooms)" ]; then
-        echo "Directory 'rubiconrooms' already exists and is not empty. Skipping cloning."
+    if [ -d "rubiconrooms" ]; then
+        # If directory exists, check if it's empty or not
+        if [ "$(ls -A rubiconrooms)" ]; then
+            echo "Directory 'rubiconrooms' already exists and is not empty. Skipping cloning."
+        else
+            echo "Directory 'rubiconrooms' exists but is empty. Proceeding with cloning."
+            git clone https://github.com/ballr24/rubiconrooms.git
+        fi
     else
-        echo "Cloning the rubiconrooms repository..."
+        echo "Directory 'rubiconrooms' does not exist. Proceeding with cloning."
         git clone https://github.com/ballr24/rubiconrooms.git
     fi
 
