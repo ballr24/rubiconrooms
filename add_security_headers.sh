@@ -95,4 +95,4 @@ else
 fi
 
 # Display log file location
-echo "All logs have been saved to $LOG_FILE"
+echo "V2 All logs have been saved to $LOG_FILE"
