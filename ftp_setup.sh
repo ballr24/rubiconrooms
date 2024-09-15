@@ -4,74 +4,121 @@
 log_file="/tmp/ftp_setup.log"
 exec > >(tee -a "$log_file") 2>&1
 set -e
-trap 'echo "Error occurred at line $LINENO"; exit 1' ERR
+trap 'echo "Error occurred at line $LINENO. Retrying..."; retry_script' ERR
+
+# Retry mechanism
+retry_count=0
+max_retries=3
+
+retry_script() {
+    if (( retry_count < max_retries )); then
+        ((retry_count++))
+        echo "Retrying... Attempt #$retry_count"
+        main_setup
+    else
+        echo "Max retries reached. Exiting."
+        exit 1
+    fi
+}
 
 # Function to generate a random password
 generate_password() {
     echo $(openssl rand -base64 12)
 }
 
-# 1. Prompt for email address
-read -p "Enter your email address to send the server details: " email_address
+# Install mailutils without any prompts
+install_mailutils() {
+    if ! dpkg -s mailutils >/dev/null 2>&1; then
+        echo "Installing mailutils..."
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y mailutils
+        echo "mailutils installed successfully."
+    else
+        echo "mailutils is already installed. Skipping."
+    fi
+}
 
-# 2. Install mailutils if not already installed
-echo "Installing mailutils..."
-sudo apt-get install -y mailutils
-echo "mailutils installed successfully."
+# Main setup process
+main_setup() {
+    # 1. Prompt for email address
+    read -p "Enter your email address to send the server details: " email_address
 
-# 3. Installation of vsftpd
-echo "Installing vsftpd..."
-sudo apt-get update
-sudo apt-get install vsftpd -y
-echo "vsftpd installed successfully."
+    # 2. Install mailutils without prompts
+    install_mailutils
 
-# 4. Backup Original Configuration
-echo "Backing up the original configuration file..."
-sudo cp /etc/vsftpd.conf /etc/vsftpd.conf.orig
-echo "Backup completed."
+    # 3. Installation of vsftpd
+    echo "Installing vsftpd..."
+    sudo apt-get update
+    sudo apt-get install -y vsftpd || echo "vsftpd is already installed."
+    echo "vsftpd installed successfully."
 
-# 5. Configuring vsftpd
-echo "Configuring vsftpd..."
-sudo sed -i 's/anonymous_enable=YES/anonymous_enable=NO/' /etc/vsftpd.conf
-sudo sed -i 's/#local_enable=YES/local_enable=YES/' /etc/vsftpd.conf
-sudo sed -i 's/#write_enable=YES/write_enable=YES/' /etc/vsftpd.conf
-sudo systemctl restart vsftpd
-echo "vsftpd configuration updated and service restarted."
+    # 4. Backup Original Configuration if not already backed up
+    if [ ! -f /etc/vsftpd.conf.orig ]; then
+        echo "Backing up the original configuration file..."
+        sudo cp /etc/vsftpd.conf /etc/vsftpd.conf.orig
+        echo "Backup completed."
+    else
+        echo "Backup already exists. Skipping."
+    fi
 
-# 6. Generate random username and password for the FTP user
-ftp_user="ftpuser_$(openssl rand -hex 3)"
-ftp_password=$(generate_password)
+    # 5. Configuring vsftpd
+    echo "Configuring vsftpd..."
+    sudo sed -i 's/anonymous_enable=YES/anonymous_enable=NO/' /etc/vsftpd.conf
+    sudo sed -i 's/#local_enable=YES/local_enable=YES/' /etc/vsftpd.conf
+    sudo sed -i 's/#write_enable=YES/write_enable=YES/' /etc/vsftpd.conf
+    sudo systemctl restart vsftpd
+    echo "vsftpd configuration updated and service restarted."
 
-echo "Creating FTP user..."
-sudo adduser --disabled-password --gecos "" $ftp_user
-echo "$ftp_user:$ftp_password" | sudo chpasswd
-echo "User $ftp_user created with a random password."
+    # 6. Generate random username and password for the FTP user
+    ftp_user="ftpuser_$(openssl rand -hex 3)"
+    ftp_password=$(generate_password)
 
-# 7. Set /var/www/html as the user's home directory
-echo "Setting /var/www/html as the home directory for $ftp_user..."
-sudo usermod -d /var/www/html $ftp_user
-sudo chown -R $ftp_user:www-data /var/www/html
-echo "Home directory set to /var/www/html for $ftp_user."
+    # Create user only if it doesn't already exist
+    if ! id -u "$ftp_user" >/dev/null 2>&1; then
+        echo "Creating FTP user..."
+        sudo adduser --disabled-password --gecos "" $ftp_user
+        echo "$ftp_user:$ftp_password" | sudo chpasswd
+        echo "User $ftp_user created with a random password."
+    else
+        echo "User $ftp_user already exists. Skipping user creation."
+    fi
 
-# 8. Add user to www-data group and set permissions
-echo "Adding user to www-data group and setting permissions..."
-sudo usermod -aG www-data $ftp_user
-sudo chmod -R g+w /var/www/html/
-echo "Permissions set for /var/www/html."
+    # 7. Set /var/www/html as the user's home directory if not already set
+    if [[ $(getent passwd "$ftp_user" | cut -d: -f6) != "/var/www/html" ]]; then
+        echo "Setting /var/www/html as the home directory for $ftp_user..."
+        sudo usermod -d /var/www/html $ftp_user
+        sudo chown -R $ftp_user:www-data /var/www/html
+        echo "Home directory set to /var/www/html for $ftp_user."
+    else
+        echo "Home directory is already set. Skipping."
+    fi
 
-# 9. Firewall Configuration
-echo "Configuring the firewall for FTP traffic..."
-sudo ufw allow 20/tcp
-sudo ufw allow 21/tcp
-sudo ufw allow OpenSSH
-sudo ufw enable
-echo "Firewall configuration complete."
+    # 8. Add user to www-data group and set permissions if not already set
+    if ! groups "$ftp_user" | grep -q www-data; then
+        echo "Adding user to www-data group and setting permissions..."
+        sudo usermod -aG www-data $ftp_user
+        sudo chmod -R g+w /var/www/html/
+        echo "Permissions set for /var/www/html."
+    else
+        echo "User already in www-data group. Skipping."
+    fi
 
-# 10. Capture server details
-ftp_server=$(hostname -I | awk '{print $1}')
-ftp_port="22"
-subject="SFTP Server Details"
-message=$(cat <<- EOM
+    # 9. Firewall Configuration if not already done
+    if ! sudo ufw status | grep -q '20/tcp'; then
+        echo "Configuring the firewall for FTP traffic..."
+        sudo ufw allow 20/tcp
+        sudo ufw allow 21/tcp
+        sudo ufw allow OpenSSH
+        sudo ufw enable
+        echo "Firewall configuration complete."
+    else
+        echo "Firewall rules already set. Skipping."
+    fi
+
+    # 10. Capture server details
+    ftp_server=$(hostname -I | awk '{print $1}')
+    ftp_port="22"
+    subject="SFTP Server Details"
+    message=$(cat <<- EOM
 Hello,
 
 Your SFTP server has been set up successfully.
@@ -88,21 +135,25 @@ Attached below is the debug log for the entire setup process.
 Best regards,
 Your server setup script
 EOM
-)
+    )
 
-# 11. Send email with server details and log
-{
-    echo "$message"
-    echo -e "\n\nDebug log:"
-    cat "$log_file"
-} | mail -s "$subject" $email_address
+    # 11. Send email with server details and log
+    {
+        echo "$message"
+        echo -e "\n\nDebug log:"
+        cat "$log_file"
+    } | mail -s "$subject" $email_address
 
-# 12. Display server details in the terminal
-echo "-------------------------------------"
-echo "SFTP setup completed!"
-echo "Server: $ftp_server"
-echo "Username: $ftp_user"
-echo "Password: $ftp_password"
-echo "Port: $ftp_port (SFTP)"
-echo "Details and log sent to $email_address"
-echo "-------------------------------------"
+    # 12. Display server details in the terminal
+    echo "-------------------------------------"
+    echo "SFTP setup completed!"
+    echo "Server: $ftp_server"
+    echo "Username: $ftp_user"
+    echo "Password: $ftp_password"
+    echo "Port: $ftp_port (SFTP)"
+    echo "Details and log sent to $email_address"
+    echo "-------------------------------------"
+}
+
+# Run the main setup
+main_setup
