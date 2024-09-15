@@ -1,8 +1,11 @@
 #!/bin/bash
 
-# Variables
-VHOST_CONFIG_PATH="/usr/local/lsws/conf/vhosts/wordpress/vhconf.conf"  # Correct vhost path for WordPress
-LOG_FILE="/var/log/add_security_headers.log"
+# Prompt for the domain name (without www or https)
+read -p "Enter the domain name (without www or https): " DOMAIN_NAME
+
+# Path to the configuration file
+VHOST_CONFIG_PATH="/usr/local/lsws/conf/vhosts/${DOMAIN_NAME}/vhconf.conf"
+LOG_FILE="/var/log/vhconf_replace.log"
 
 # Logging function
 log_message() {
@@ -10,7 +13,7 @@ log_message() {
 }
 
 # Start log
-log_message "Starting the process to add security headers and configure firewall."
+log_message "Starting the process to replace vhconf.conf for domain: $DOMAIN_NAME."
 
 # Backup the original virtual host config
 if cp "$VHOST_CONFIG_PATH" "$VHOST_CONFIG_PATH.bak"; then
@@ -20,26 +23,68 @@ else
   exit 1
 fi
 
-# Check if the `/` context exists and add it if not
-if ! grep -q "context / {" "$VHOST_CONFIG_PATH"; then
-  echo -e "\ncontext / {\n  location \$DOC_ROOT/\n  allowBrowse 1\n}\n" >> "$VHOST_CONFIG_PATH"
-  log_message "The `/` context did not exist, so it was created."
-fi
+# Replace the content of vhconf.conf with the new configuration
+cat > "$VHOST_CONFIG_PATH" <<EOL
+docRoot                   /var/www/html/
 
-# Insert security headers using the `note` block in the correct order in the `/` context
-if ! grep -q "note                    <<<END_note" "$VHOST_CONFIG_PATH"; then
-  # Ensure the `note` block is added after `location` and `allowBrowse`
-  sed -i '/location \$DOC_ROOT\//a \  note                    <<<END_note\nStrict-Transport-Security: max-age=31536000; includeSubDomains\nContent-Security-Policy \"upgrade-insecure-requests;connect-src *\"\nReferrer-Policy strict-origin-when-cross-origin\nX-Frame-Options: SAMEORIGIN\nX-Content-Type-Options: nosniff\nX-XSS-Protection 1;mode=block\nPermissions-Policy: geolocation=(self \"\")\n  END_note' "$VHOST_CONFIG_PATH"
-  
-  if [ $? -eq 0 ]; then
-    log_message "Security headers added successfully using the `note` block after location in the / context in $VHOST_CONFIG_PATH."
-  else
-    log_message "Failed to add security headers using the `note` block to $VHOST_CONFIG_PATH."
-    exit 1
-  fi
-else
-  log_message "Security headers (note block) already exist in $VHOST_CONFIG_PATH. No changes made."
-fi
+index  {
+  useServer               0
+  indexFiles              index.php index.html
+}
+
+context /phpmyadmin/ {
+  location                /var/www/phpmyadmin
+  allowBrowse             1
+  indexFiles              index.php
+
+  accessControl  {
+    allow                 *
+  }
+
+  rewrite  {
+    enable                0
+    inherit               0
+  }
+  addDefaultCharset       off
+}
+
+context / {
+  location                \$DOC_ROOT/
+  allowBrowse             1
+  note                    <<<END_note
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+Content-Security-Policy "upgrade-insecure-requests;connect-src *"
+Referrer-Policy strict-origin-when-cross-origin
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+X-XSS-Protection 1;mode=block
+Permissions-Policy: geolocation=(self "")
+  END_note
+
+  rewrite  {
+
+  }
+  addDefaultCharset       off
+
+  phpIniOverride  {
+
+  }
+}
+
+rewrite  {
+  enable                  1
+  autoLoadHtaccess        1
+}
+
+vhssl  {
+  keyFile                 /etc/letsencrypt/live/$DOMAIN_NAME/privkey.pem
+  certFile                /etc/letsencrypt/live/$DOMAIN_NAME/fullchain.pem
+  certChain               1
+}
+EOL
+
+# Log success
+log_message "The configuration file for $DOMAIN_NAME has been replaced."
 
 # Graceful restart of OpenLiteSpeed
 if /usr/local/lsws/bin/lswsctrl restart; then
@@ -48,20 +93,6 @@ else
   log_message "Failed to restart OpenLiteSpeed."
   exit 1
 fi
-
-# Use ufw to open port 7080
-if command -v ufw >/dev/null 2>&1; then
-  if ufw allow 7080/tcp; then
-    log_message "Port 7080 opened using ufw."
-  else
-    log_message "Failed to open port 7080 using ufw."
-    exit 1
-  fi
-else
-  log_message "ufw not found, skipping firewall configuration."
-fi
-
-log_message "OpenLiteSpeed security headers and firewall configuration completed successfully."
 
 # Display log file location
 echo "All logs have been saved to $LOG_FILE"
