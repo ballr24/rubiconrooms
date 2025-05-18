@@ -19,5 +19,8 @@ curl -s https://raw.githubusercontent.com/ballr24/rubiconrooms/main/add_security
 
 curl -s https://raw.githubusercontent.com/ballr24/rubiconrooms/main/ftp_setup.sh | bash
 
-curl -fsSL https://raw.githubusercontent.com/ballr24/rubiconrooms/main/add-swap.sh \
-  | sudo bash
+curl -fsSL -o add-swap.sh \
+  https://raw.githubusercontent.com/ballr24/rubiconrooms/main/add-swap.sh
+chmod +x add-swap.sh
+sudo ./add-swap.sh
+
